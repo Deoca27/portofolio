@@ -969,3 +969,52 @@ function closeImageModal() {
     document.body.style.overflow = "";
 
 }
+
+
+// ========================================
+// HAMBURGER MENU
+// ========================================
+
+const hamburger =
+    document.getElementById("hamburger");
+
+const navbar =
+    document.getElementById("navbar");
+
+
+hamburger.addEventListener("click", () => {
+
+    hamburger.classList.toggle("active");
+
+    navbar.classList.toggle("active");
+
+});
+
+
+navbar.addEventListener("click", (event) => {
+
+    if (event.target.tagName === "A") {
+
+        hamburger.classList.remove("active");
+
+        navbar.classList.remove("active");
+
+    }
+
+});
+
+
+document.addEventListener("click", (event) => {
+
+    if (
+        !hamburger.contains(event.target) &&
+        !navbar.contains(event.target)
+    ) {
+
+        hamburger.classList.remove("active");
+
+        navbar.classList.remove("active");
+
+    }
+
+});
