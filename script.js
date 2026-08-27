@@ -733,6 +733,19 @@ const certificates = [
         image: "img/sertifikat/trouble&jarkom.jpg",
 
         link: ""
+    },
+
+
+    {
+        title: "Teknokrat Career Preparation Program",
+
+        issuer: "Universitas Teknokrat Indonesia",
+
+        date: "2026",
+
+        image: "img/sertifikat/career.jpg",
+
+        link: ""
     }
 
 ];
