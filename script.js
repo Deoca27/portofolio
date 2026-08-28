@@ -746,7 +746,267 @@ const certificates = [
         image: "img/sertifikat/career.jpg",
 
         link: ""
-    }
+    },
+
+
+    {
+        title: "Senior Game Developer",
+
+        issuer: "Universitas Teknokrat Indonesia",
+
+        date: "2025",
+
+        image: "img/sertifikat/Screenshot (889).png",
+
+        link: ""
+    },
+
+
+    {
+        title: "Basic Artificial Intelligence",
+
+        issuer: "Universitas Teknokrat Indonesia",
+
+        date: "2025",
+
+        image: "img/sertifikat/Screenshot (890).png",
+
+        link: ""
+    },
+
+
+    {
+        title: "Kompeetensi Keahlian Multimedia Animasi 2D dan 3D",
+
+        issuer: "Universitas Teknokrat Indonesia",
+
+        date: "2025",
+
+        image: "img/sertifikat/Screenshot (891).png",
+
+        link: ""
+    },
+
+
+    {
+        title: "Technopreneurship",
+
+        issuer: "Universitas Teknokrat Indonesia",
+
+        date: "2025",
+
+        image: "img/sertifikat/Screenshot (892).png",
+
+        link: ""
+    },
+
+
+    {
+        title: "Basic Information System",
+
+        issuer: "Universitas Teknokrat Indonesia",
+
+        date: "2025",
+
+        image: "img/sertifikat/Screenshot (893).png",
+
+        link: ""
+    },
+
+
+    {
+        title: "Digital Image Practitioner",
+
+        issuer: "Universitas Teknokrat Indonesia",
+
+        date: "2025",
+
+        image: "img/sertifikat/Screenshot (894).png",
+
+        link: ""
+    },
+
+
+    {
+        title: "Software Project Manager",
+
+        issuer: "Universitas Teknokrat Indonesia",
+
+        date: "2025",
+
+        image: "img/sertifikat/Screenshot (895).png",
+
+        link: ""
+    },
+
+
+    {
+        title: "Junior Digital Image Practitioner",
+
+        issuer: "Universitas Teknokrat Indonesia",
+
+        date: "2025",
+
+        image: "img/sertifikat/Screenshot (896).png",
+
+        link: ""
+    },
+
+
+    {
+        title: "Advance Mobile Programming",
+
+        issuer: "Universitas Teknokrat Indonesia",
+
+        date: "2025",
+
+        image: "img/sertifikat/Screenshot (897).png",
+
+        link: ""
+    },
+
+
+    {
+        title: "Game Developer",
+
+        issuer: "Universitas Teknokrat Indonesia",
+
+        date: "2025",
+
+        image: "img/sertifikat/Screenshot (898).png",
+
+        link: ""
+    },
+
+
+    {
+        title: "Junior Mobile Application Programmer",
+
+        issuer: "Universitas Teknokrat Indonesia",
+
+        date: "2024",
+
+        image: "img/sertifikat/Screenshot (899).png",
+
+        link: ""
+    },
+
+
+    {
+        title: "Junior Web Developer",
+
+        issuer: "Universitas Teknokrat Indonesia",
+
+        date: "2024",
+
+        image: "img/sertifikat/Screenshot (900).png",
+
+        link: ""
+    },
+
+
+    {
+        title: "Junior Game Designer",
+
+        issuer: "Universitas Teknokrat Indonesia",
+
+        date: "2024",
+
+        image: "img/sertifikat/Screenshot (901).png",
+
+        link: ""
+    },
+
+
+    {
+        title: "Basic Certificate of Proficiency in Parallel and Distributed Systems",
+
+        issuer: "Universitas Teknokrat Indonesia",
+
+        date: "2024",
+
+        image: "img/sertifikat/Screenshot (902).png",
+
+        link: ""
+    },
+
+
+    {
+        title: "Junior Web Designer",
+
+        issuer: "Universitas Teknokrat Indonesia",
+
+        date: "2024",
+
+        image: "img/sertifikat/Screenshot (903).png",
+
+        link: ""
+    },
+
+
+    {
+        title: "Database Designer",
+
+        issuer: "Universitas Teknokrat Indonesia",
+
+        date: "2024",
+
+        image: "img/sertifikat/Screenshot (904).png",
+
+        link: ""
+    },
+
+
+    {
+        title: "Basic Object Oriented Programmer",
+
+        issuer: "Universitas Teknokrat Indonesia",
+
+        date: "2024",
+
+        image: "img/sertifikat/Screenshot (905).png",
+
+        link: ""
+    },
+
+
+    {
+        title: "Junior AR/VR Developer",
+
+        issuer: "Universitas Teknokrat Indonesia",
+
+        date: "2024",
+
+        image: "img/sertifikat/Screenshot (906).png",
+
+        link: ""
+    },
+
+
+    {
+        title: "Basic Data Structure",
+
+        issuer: "Universitas Teknokrat Indonesia",
+
+        date: "2023",
+
+        image: "img/sertifikat/basicds.jpg",
+
+        link: ""
+    },
+
+
+    {
+        title: "Junior Programming Algorithm",
+
+        issuer: "Universitas Teknokrat Indonesia",
+
+        date: "2023",
+
+        image: "img/sertifikat/juniorpa.jpg",
+
+        link: ""
+    },
 
 ];
 
