@@ -1,5 +1,5 @@
 // ========================================
-// SWARM REBUILD ANIMATION (SCROLL + AUTO PLAY/STOP TOGGLE)
+// SWARM REBUILD ANIMATION (CONTAINER FIRST + I-BEAM TYPING CURSOR)
 // ========================================
 
 (function () {
@@ -27,7 +27,7 @@
             transition: background-color 0.4s ease;
         }
 
-        /* Efek kursor ketik (caret) */
+        /* Efek kursor ketik (caret) di dalam teks */
         .typing-caret::after {
             content: "|";
             color: #38bdf8;
@@ -46,7 +46,7 @@
             pointer-events: none;
             z-index: 99999;
             opacity: 0;
-            transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease;
+            transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease;
         }
         .swarm-cursor-label {
             position: absolute;
@@ -60,10 +60,43 @@
             white-space: nowrap;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
             font-family: Arial, sans-serif;
+            transition: left 0.2s ease, top 0.2s ease;
         }
-        .swarm-cursor.clicking svg {
+
+        /* Transisi ikon panah vs ikon garis ketik (I-beam) */
+        .swarm-cursor svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transition: transform 0.18s ease, opacity 0.18s ease;
+        }
+        .swarm-cursor .cursor-ibeam {
+            opacity: 0;
+            transform: scale(0.5);
+        }
+
+        /* Saat mode mengetik aktif: panah hilang, garis ketik muncul */
+        .swarm-cursor.is-typing .cursor-arrow {
+            opacity: 0;
+            transform: scale(0.5);
+        }
+        .swarm-cursor.is-typing .cursor-ibeam {
+            opacity: 1;
+            transform: scale(1);
+            animation: ibeamPulse 0.7s infinite alternate;
+        }
+        .swarm-cursor.is-typing .swarm-cursor-label {
+            left: 10px;
+            top: 18px;
+        }
+
+        @keyframes ibeamPulse {
+            0% { opacity: 1; }
+            100% { opacity: 0.65; }
+        }
+
+        .swarm-cursor.clicking .cursor-arrow {
             transform: scale(0.8);
-            transition: transform 0.1s;
         }
 
         /* Wadah Tombol Kontrol di pojok kanan bawah */
@@ -134,7 +167,7 @@
     let remainingCount = 0;
     const buildQueue = [];
 
-    // 2. Agen Kursor
+    // 2. Agen Kursor (memiliki SVG Panah & SVG Garis Ketik / I-Beam)
     const agents = [
         { name: "DCA · Designer", color: "#38bdf8" },
         { name: "DCA · Developer", color: "#10b981" },
@@ -145,8 +178,14 @@
         const el = document.createElement("div");
         el.className = "swarm-cursor";
         el.innerHTML = `
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="${agent.color}">
+            <!-- Ikon Kursor Panah -->
+            <svg class="cursor-arrow" width="20" height="20" viewBox="0 0 24 24" fill="${agent.color}">
                 <path d="M4 2L20 10.5L12.5 13L9.5 20.5L4 2Z" stroke="#0f172a" stroke-width="1.5"/>
+            </svg>
+            <!-- Ikon Garis Ketik (I-Beam) -->
+            <svg class="cursor-ibeam" width="16" height="22" viewBox="0 0 16 22" fill="none">
+                <path d="M4 2H12M4 20H12M8 2V20" stroke="#0f172a" stroke-width="4" stroke-linecap="round"/>
+                <path d="M4 2H12M4 20H12M8 2V20" stroke="${agent.color}" stroke-width="2" stroke-linecap="round"/>
             </svg>
             <div class="swarm-cursor-label" style="background:${agent.color}; ${agent.color === '#38bdf8' ? 'color:#0f172a;' : ''}">${agent.name}</div>
         `;
@@ -176,14 +215,33 @@
         cursor.style.transform = `translate(${x}px, ${y}px)`;
     }
 
+    function setTypingCursor(cursor, typing) {
+        if (typing) {
+            cursor.classList.remove("clicking");
+            cursor.classList.add("is-typing");
+        } else {
+            cursor.classList.remove("is-typing");
+        }
+    }
+
     function hideCursors() {
         cursors.forEach((c) => {
             c.style.opacity = "0";
-            c.classList.remove("clicking");
+            c.classList.remove("clicking", "is-typing");
         });
     }
 
-    // 3. Animasi Membangun Teks
+    // Helper: Ambil elemen-elemen tulisan di dalam sebuah kontainer/card
+    function getInnerTextNodes(container) {
+        return Array.from(
+            container.querySelectorAll("h3, p, span, strong, a")
+        ).filter((node) => {
+            if (node.closest("h3, p, span, strong, a") !== node) return false;
+            return node.textContent.trim().length > 0;
+        });
+    }
+
+    // 3. Animasi Membangun Teks Mandiri (Judul / Hero)
     async function buildText(el, cursor) {
         if (isSkipped) return;
 
@@ -201,22 +259,27 @@
         el.style.height = "0px";
         el.classList.remove("swarm-hidden");
 
+        setTypingCursor(cursor, false);
         moveCursor(cursor, rect.left, rect.top);
-        await sleep(280);
+        await sleep(250);
         if (isSkipped) return restoreElement(el);
 
         cursor.classList.add("clicking");
         el.classList.add("swarm-active");
-        await sleep(70);
+        await sleep(60);
 
-        el.style.transition = "width 0.35s cubic-bezier(0.22, 1, 0.36, 1), height 0.35s cubic-bezier(0.22, 1, 0.36, 1)";
+        el.style.transition = "width 0.32s cubic-bezier(0.22, 1, 0.36, 1), height 0.32s cubic-bezier(0.22, 1, 0.36, 1)";
         el.style.width = rect.width + "px";
         el.style.height = rect.height + "px";
         moveCursor(cursor, rect.right, rect.bottom);
-        await sleep(370);
+        await sleep(340);
         if (isSkipped) return restoreElement(el);
 
-        cursor.classList.remove("clicking");
+        // Ubah kursor panah menjadi garis ketik (I-beam) saat mulai mengetik
+        setTypingCursor(cursor, true);
+        moveCursor(cursor, rect.left - 4, rect.top + 4);
+        await sleep(160);
+
         el.style.transition = "none";
         el.style.height = "auto";
         el.style.minHeight = rect.height + "px";
@@ -231,6 +294,9 @@
             await sleep(delay);
         }
 
+        // Kembalikan kursor menjadi panah lagi setelah selesai mengetik
+        setTypingCursor(cursor, false);
+
         el.innerHTML = originalHTML;
         el.style.width = "";
         el.style.height = "";
@@ -240,7 +306,7 @@
         el.classList.add("swarm-done");
     }
 
-    // 4. Animasi Membangun Kotak / Gambar / Card
+    // 4. Animasi Membangun Kotak Tanpa Teks Ketik (Foto Profil / Tombol Hero)
     async function buildBox(el, cursor) {
         if (isSkipped) return;
 
@@ -256,19 +322,20 @@
         el.style.height = "0px";
         el.classList.remove("swarm-hidden");
 
+        setTypingCursor(cursor, false);
         moveCursor(cursor, rect.left, rect.top);
-        await sleep(280);
+        await sleep(250);
         if (isSkipped) return restoreElement(el);
 
         cursor.classList.add("clicking");
         el.classList.add("swarm-active");
-        await sleep(70);
+        await sleep(60);
 
-        el.style.transition = "width 0.4s cubic-bezier(0.22, 1, 0.36, 1), height 0.4s cubic-bezier(0.22, 1, 0.36, 1)";
+        el.style.transition = "width 0.38s cubic-bezier(0.22, 1, 0.36, 1), height 0.38s cubic-bezier(0.22, 1, 0.36, 1)";
         el.style.width = rect.width + "px";
         el.style.height = rect.height + "px";
         moveCursor(cursor, rect.right, rect.bottom);
-        await sleep(420);
+        await sleep(400);
         if (isSkipped) return restoreElement(el);
 
         cursor.classList.remove("clicking");
@@ -284,6 +351,82 @@
         el.classList.add("swarm-done");
     }
 
+    // 5. Animasi Kontainer Muncul Dulu -> Kursor Berubah Jadi Garis Ketik -> Tulisannya Muncul
+    async function buildCardWithText(card, cursor) {
+        if (isSkipped) return;
+
+        const textNodes = getInnerTextNodes(card);
+        textNodes.forEach((node) => node.classList.add("swarm-hidden"));
+
+        const rect = card.getBoundingClientRect();
+
+        // Tahap A: Munculkan kontainer dengan kursor panah
+        setTypingCursor(cursor, false);
+        card.style.width = "0px";
+        card.style.height = "0px";
+        card.classList.remove("swarm-hidden");
+
+        moveCursor(cursor, rect.left, rect.top);
+        await sleep(240);
+        if (isSkipped) return restoreElement(card);
+
+        cursor.classList.add("clicking");
+        card.classList.add("swarm-active");
+        await sleep(60);
+
+        card.style.transition = "width 0.36s cubic-bezier(0.22, 1, 0.36, 1), height 0.36s cubic-bezier(0.22, 1, 0.36, 1)";
+        card.style.width = rect.width + "px";
+        card.style.height = rect.height + "px";
+        moveCursor(cursor, rect.right, rect.bottom);
+        await sleep(380);
+        if (isSkipped) return restoreElement(card);
+
+        cursor.classList.remove("clicking");
+        card.style.transition = "none";
+        card.style.width = "";
+        card.style.height = "";
+        card.classList.remove("swarm-active");
+        card.classList.add("swarm-done");
+
+        // Tahap B: Kursor berubah menjadi garis ketik (I-beam) lalu mengetik setiap teks
+        for (const node of textNodes) {
+            if (isSkipped) break;
+
+            const nodeRect = node.getBoundingClientRect();
+            const originalHTML = node.dataset.originalHtml;
+            const plainText = node.dataset.plainText;
+
+            moveCursor(cursor, nodeRect.left - 2, nodeRect.top);
+            setTypingCursor(cursor, true);
+            await sleep(160);
+            if (isSkipped) break;
+
+            node.textContent = "";
+            node.classList.remove("swarm-hidden");
+            node.classList.add("typing-caret");
+
+            const step = plainText.length > 100 ? 6 : plainText.length > 40 ? 3 : 2;
+            const delay = plainText.length > 100 ? 7 : 12;
+
+            for (let i = 0; i < plainText.length; i += step) {
+                if (isSkipped) break;
+                node.textContent = plainText.slice(0, i + step);
+                await sleep(delay);
+            }
+
+            node.innerHTML = originalHTML;
+            node.classList.remove("typing-caret");
+            node.classList.add("swarm-done");
+        }
+
+        // Kembalikan ikon kursor panah setelah selesai mengetik semua teks di kontainer
+        setTypingCursor(cursor, false);
+
+        if (isSkipped) {
+            restoreElement(card);
+        }
+    }
+
     function restoreElement(el) {
         if (el.dataset.originalHtml !== undefined) {
             el.innerHTML = el.dataset.originalHtml;
@@ -292,16 +435,26 @@
         el.style.height = "";
         el.style.minHeight = "";
         el.style.display = "";
+
         const img = el.querySelector("img");
         if (img) {
             img.style.width = "";
             img.style.height = "";
         }
+
+        el.querySelectorAll(".swarm-hidden, .typing-caret").forEach((child) => {
+            if (child.dataset.originalHtml !== undefined) {
+                child.innerHTML = child.dataset.originalHtml;
+            }
+            child.classList.remove("swarm-hidden", "typing-caret", "swarm-active");
+            child.classList.add("swarm-done");
+        });
+
         el.classList.remove("swarm-hidden", "swarm-active", "typing-caret");
         el.classList.add("swarm-done");
     }
 
-    // 5. Pemroses Antrean
+    // 6. Pemroses Antrean
     async function processQueue() {
         if (isProcessing || isSkipped) return;
         isProcessing = true;
@@ -313,7 +466,6 @@
             if (el.dataset.swarmBuilt === "true") continue;
             el.dataset.swarmBuilt = "true";
 
-            // Jika mode Auto Play aktif, scroll layar otomatis mengikuti elemen
             if (isAutoPlay) {
                 const rect = el.getBoundingClientRect();
                 const isOutOfView = rect.top < 90 || rect.bottom > window.innerHeight - 50;
@@ -323,7 +475,6 @@
                 }
             }
 
-            // Cek ulang jika user menekan Stop atau Skip saat jeda scroll
             if (isSkipped) break;
             if (!isAutoPlay && item.fromAutoPlay) {
                 el.dataset.swarmBuilt = "false";
@@ -336,6 +487,8 @@
 
             if (type === "text") {
                 await buildText(el, cursor);
+            } else if (type === "card") {
+                await buildCardWithText(el, cursor);
             } else {
                 await buildBox(el, cursor);
             }
@@ -353,7 +506,7 @@
         }
     }
 
-    // 6. Kumpulkan target elemen dari portofolio
+    // 7. Kumpulkan target elemen dari portofolio
     function collectTargets() {
         const targets = [];
 
@@ -395,37 +548,37 @@
                 });
             } else if (secId === "#skills") {
                 sec.querySelectorAll(".skill").forEach((card) => {
-                    targets.push({ el: card, type: "box" });
+                    targets.push({ el: card, type: "card" });
                 });
             } else if (secId === "#experience") {
                 sec.querySelectorAll(".timeline-item").forEach((item) => {
-                    targets.push({ el: item, type: "box" });
+                    targets.push({ el: item, type: "card" });
                 });
             } else if (secId === "#projects") {
                 sec.querySelectorAll(".project").forEach((card) => {
-                    targets.push({ el: card, type: "box" });
+                    targets.push({ el: card, type: "card" });
                 });
             } else if (secId === "#youtube") {
                 const ytCard = sec.querySelector(".youtube-card");
-                if (ytCard) targets.push({ el: ytCard, type: "box" });
+                if (ytCard) targets.push({ el: ytCard, type: "card" });
             } else if (secId === "#achievements") {
                 sec.querySelectorAll(".achievement").forEach((item) => {
-                    targets.push({ el: item, type: "box" });
+                    targets.push({ el: item, type: "card" });
                 });
             } else if (secId === "#certificates") {
                 sec.querySelectorAll(".certificate").forEach((card) => {
-                    targets.push({ el: card, type: "box" });
+                    targets.push({ el: card, type: "card" });
                 });
             } else if (secId === "#contact") {
                 const contactBox = sec.querySelector(".contact");
-                if (contactBox) targets.push({ el: contactBox, type: "box" });
+                if (contactBox) targets.push({ el: contactBox, type: "card" });
             }
         });
 
         return targets;
     }
 
-    // 7. Inisialisasi Scroll Observer & Tombol Kontrol
+    // 8. Inisialisasi Scroll Observer & Tombol Kontrol
     function initPortfolioSwarm() {
         const targets = collectTargets();
         remainingCount = targets.length;
@@ -433,15 +586,23 @@
 
         targets.forEach((item, index) => {
             const { el, type } = item;
+
             if (type === "text") {
                 el.dataset.originalHtml = el.innerHTML.trim();
                 el.dataset.plainText = el.textContent.replace(/\s+/g, " ").trim();
+            } else if (type === "card") {
+                const textNodes = getInnerTextNodes(el);
+                textNodes.forEach((node) => {
+                    node.dataset.originalHtml = node.innerHTML.trim();
+                    node.dataset.plainText = node.textContent.replace(/\s+/g, " ").trim();
+                    node.classList.add("swarm-hidden");
+                });
             }
+
             el.classList.add("swarm-hidden");
             targetMap.set(el, { ...item, index });
         });
 
-        // Pantau elemen yang masuk layar saat scroll manual
         const observer = new IntersectionObserver(
             (entries) => {
                 if (isSkipped || isAutoPlay) return;
@@ -470,19 +631,16 @@
 
         targets.forEach(({ el }) => observer.observe(el));
 
-        // Aksi Toggle Tombol Auto Play / Stop
         autoBtn.addEventListener("click", () => {
             if (isSkipped) return;
 
             if (!isAutoPlay) {
-                // MULAI AUTO PLAY
                 isAutoPlay = true;
                 observer.disconnect();
 
                 autoBtn.textContent = "Stop Auto ⏹";
                 autoBtn.classList.add("is-playing");
 
-                // Masukkan semua elemen yang belum dibangun ke antrean
                 targets.forEach((item) => {
                     if (item.el.dataset.queued !== "true" && item.el.dataset.swarmBuilt !== "true") {
                         item.el.dataset.queued = "true";
@@ -492,13 +650,11 @@
 
                 processQueue();
             } else {
-                // BERHENTI (STOP AUTO PLAY) & KEMBALI KE MODE SCROLL MANUAL
                 isAutoPlay = false;
 
                 autoBtn.textContent = "Auto Play ▶";
                 autoBtn.classList.remove("is-playing");
 
-                // Hapus sisa antrean yang berasal dari Auto Play dan belum sempat dibangun
                 for (let i = buildQueue.length - 1; i >= 0; i--) {
                     const queuedItem = buildQueue[i];
                     if (queuedItem.el.dataset.swarmBuilt !== "true") {
@@ -507,7 +663,6 @@
                     }
                 }
 
-                // Aktifkan kembali pantauan scroll manual untuk elemen yang tersisa
                 targets.forEach(({ el }) => {
                     if (el.dataset.swarmBuilt !== "true") {
                         observer.observe(el);
@@ -516,7 +671,6 @@
             }
         });
 
-        // Aksi Tombol Skip Build
         skipBtn.addEventListener("click", () => {
             isSkipped = true;
             isAutoPlay = false;
