@@ -1,9 +1,9 @@
 // ========================================
-// SWARM REBUILD ANIMATION (CONTAINER FIRST + I-BEAM TYPING CURSOR)
+// SWARM REBUILD ANIMATION (VIEWPORT PRIORITY + CONTAINER FIRST + I-BEAM CURSOR)
 // ========================================
 
 (function () {
-    // Paksa halaman kembali ke paling atas saat di-refresh
+    // 0. Paksa halaman kembali ke paling atas saat di-refresh
     if ("scrollRestoration" in history) {
         history.scrollRestoration = "manual";
     }
@@ -11,7 +11,7 @@
     window.addEventListener("beforeunload", () => {
         window.scrollTo(0, 0);
     });
-    
+
     // 1. Suntikkan CSS khusus Swarm
     const swarmStyles = document.createElement("style");
     swarmStyles.textContent = `
@@ -172,11 +172,12 @@
     let isSkipped = false;
     let isAutoPlay = false;
     let isProcessing = false;
+    let isJumpingSection = false;
     let cursorTurn = 0;
     let remainingCount = 0;
     const buildQueue = [];
 
-    // 2. Agen Kursor (memiliki SVG Panah & SVG Garis Ketik / I-Beam)
+    // 2. Agen Kursor
     const agents = [
         { name: "DCA · Designer", color: "#38bdf8" },
         { name: "DCA · Developer", color: "#10b981" },
@@ -187,11 +188,9 @@
         const el = document.createElement("div");
         el.className = "swarm-cursor";
         el.innerHTML = `
-            <!-- Ikon Kursor Panah -->
             <svg class="cursor-arrow" width="20" height="20" viewBox="0 0 24 24" fill="${agent.color}">
                 <path d="M4 2L20 10.5L12.5 13L9.5 20.5L4 2Z" stroke="#0f172a" stroke-width="1.5"/>
             </svg>
-            <!-- Ikon Garis Ketik (I-Beam) -->
             <svg class="cursor-ibeam" width="16" height="22" viewBox="0 0 16 22" fill="none">
                 <path d="M4 2H12M4 20H12M8 2V20" stroke="#0f172a" stroke-width="4" stroke-linecap="round"/>
                 <path d="M4 2H12M4 20H12M8 2V20" stroke="${agent.color}" stroke-width="2" stroke-linecap="round"/>
@@ -240,6 +239,12 @@
         });
     }
 
+    // Helper: Cek apakah elemen sedang tampil di layar saat ini
+    function isInViewport(el) {
+        const rect = el.getBoundingClientRect();
+        return rect.bottom > 0 && rect.top < window.innerHeight;
+    }
+
     // Helper: Ambil elemen-elemen tulisan di dalam sebuah kontainer/card
     function getInnerTextNodes(container) {
         return Array.from(
@@ -284,7 +289,6 @@
         await sleep(340);
         if (isSkipped) return restoreElement(el);
 
-        // Ubah kursor panah menjadi garis ketik (I-beam) saat mulai mengetik
         setTypingCursor(cursor, true);
         moveCursor(cursor, rect.left - 4, rect.top + 4);
         await sleep(160);
@@ -303,7 +307,6 @@
             await sleep(delay);
         }
 
-        // Kembalikan kursor menjadi panah lagi setelah selesai mengetik
         setTypingCursor(cursor, false);
 
         el.innerHTML = originalHTML;
@@ -369,7 +372,6 @@
 
         const rect = card.getBoundingClientRect();
 
-        // Tahap A: Munculkan kontainer dengan kursor panah
         setTypingCursor(cursor, false);
         card.style.width = "0px";
         card.style.height = "0px";
@@ -397,7 +399,6 @@
         card.classList.remove("swarm-active");
         card.classList.add("swarm-done");
 
-        // Tahap B: Kursor berubah menjadi garis ketik (I-beam) lalu mengetik setiap teks
         for (const node of textNodes) {
             if (isSkipped) break;
 
@@ -428,7 +429,6 @@
             node.classList.add("swarm-done");
         }
 
-        // Kembalikan ikon kursor panah setelah selesai mengetik semua teks di kontainer
         setTypingCursor(cursor, false);
 
         if (isSkipped) {
@@ -463,59 +463,7 @@
         el.classList.add("swarm-done");
     }
 
-    // 6. Pemroses Antrean
-    async function processQueue() {
-        if (isProcessing || isSkipped) return;
-        isProcessing = true;
-
-        while (buildQueue.length > 0 && !isSkipped) {
-            const item = buildQueue.shift();
-            const { el, type } = item;
-
-            if (el.dataset.swarmBuilt === "true") continue;
-            el.dataset.swarmBuilt = "true";
-
-            if (isAutoPlay) {
-                const rect = el.getBoundingClientRect();
-                const isOutOfView = rect.top < 90 || rect.bottom > window.innerHeight - 50;
-                if (isOutOfView) {
-                    el.scrollIntoView({ behavior: "smooth", block: "center" });
-                    await sleep(320);
-                }
-            }
-
-            if (isSkipped) break;
-            if (!isAutoPlay && item.fromAutoPlay) {
-                el.dataset.swarmBuilt = "false";
-                el.dataset.queued = "false";
-                continue;
-            }
-
-            const cursor = cursors[cursorTurn % cursors.length];
-            cursorTurn++;
-
-            if (type === "text") {
-                await buildText(el, cursor);
-            } else if (type === "card") {
-                await buildCardWithText(el, cursor);
-            } else {
-                await buildBox(el, cursor);
-            }
-
-            remainingCount--;
-        }
-
-        isProcessing = false;
-
-        if (!isSkipped) {
-            hideCursors();
-            if (remainingCount <= 0 && controlsBox.parentNode) {
-                controlsBox.remove();
-            }
-        }
-    }
-
-    // 7. Kumpulkan target elemen dari portofolio
+    // 6. Kumpulkan target elemen dari portofolio
     function collectTargets() {
         const targets = [];
 
@@ -587,7 +535,7 @@
         return targets;
     }
 
-    // 8. Inisialisasi Scroll Observer & Tombol Kontrol
+    // 7. Inisialisasi Scroll Observer, Viewport Priority & Tombol Kontrol
     function initPortfolioSwarm() {
         const targets = collectTargets();
         remainingCount = targets.length;
@@ -614,7 +562,7 @@
 
         const observer = new IntersectionObserver(
             (entries) => {
-                if (isSkipped || isAutoPlay) return;
+                if (isSkipped || isAutoPlay || isJumpingSection) return;
 
                 const newlyVisible = entries
                     .filter((entry) => entry.isIntersecting)
@@ -634,12 +582,161 @@
             },
             {
                 root: null,
-                threshold: 0.12
+                threshold: 0.1
             }
         );
 
+        // Pemroses Antrean dengan Prioritas Elemen yang Tampil di Layar
+        async function processQueue() {
+            if (isProcessing || isSkipped) return;
+            isProcessing = true;
+
+            while (buildQueue.length > 0 && !isSkipped) {
+                if (!isAutoPlay) {
+                    // Urutkan ulang antrean: yang sedang tampil di layar selalu didahulukan
+                    buildQueue.sort((a, b) => {
+                        const aVis = isInViewport(a.el) ? 0 : 1;
+                        const bVis = isInViewport(b.el) ? 0 : 1;
+                        if (aVis !== bVis) return aVis - bVis;
+                        return a.index - b.index;
+                    });
+
+                    // Jika elemen terdepan ternyata sudah keluar layar (karena user scroll/klik menu lain),
+                    // kembalikan ke observer agar tidak menghalangi elemen yang sedang dilihat user
+                    if (!isInViewport(buildQueue[0].el)) {
+                        const skippedItem = buildQueue.shift();
+                        if (skippedItem.el.dataset.swarmBuilt !== "true") {
+                            skippedItem.el.dataset.queued = "false";
+                            observer.observe(skippedItem.el);
+                        }
+                        continue;
+                    }
+                }
+
+                const item = buildQueue.shift();
+                const { el, type } = item;
+
+                if (el.dataset.swarmBuilt === "true") continue;
+                el.dataset.swarmBuilt = "true";
+
+                if (isAutoPlay) {
+                    const rect = el.getBoundingClientRect();
+                    const isOutOfView = rect.top < 90 || rect.bottom > window.innerHeight - 50;
+                    if (isOutOfView) {
+                        el.scrollIntoView({ behavior: "smooth", block: "center" });
+                        await sleep(320);
+                    }
+                }
+
+                if (isSkipped) break;
+                if (!isAutoPlay && item.fromAutoPlay) {
+                    el.dataset.swarmBuilt = "false";
+                    el.dataset.queued = "false";
+                    observer.observe(el);
+                    continue;
+                }
+
+                const cursor = cursors[cursorTurn % cursors.length];
+                cursorTurn++;
+
+                if (type === "text") {
+                    await buildText(el, cursor);
+                } else if (type === "card") {
+                    await buildCardWithText(el, cursor);
+                } else {
+                    await buildBox(el, cursor);
+                }
+
+                remainingCount--;
+            }
+
+            isProcessing = false;
+
+            if (!isSkipped) {
+                hideCursors();
+                if (remainingCount <= 0 && controlsBox.parentNode) {
+                    controlsBox.remove();
+                }
+            }
+        }
+
+        // Prioritaskan elemen yang tampil di layar saat menu navigasi / tombol anchor diklik
+        function prioritizeVisibleElements() {
+            if (isSkipped || isAutoPlay) return;
+
+            // Kosongkan antrean lama yang belum sempat dibangun
+            while (buildQueue.length > 0) {
+                const oldItem = buildQueue.pop();
+                if (oldItem.el.dataset.swarmBuilt !== "true") {
+                    oldItem.el.dataset.queued = "false";
+                    observer.observe(oldItem.el);
+                }
+            }
+
+            // Masukkan semua elemen yang sedang tampil di layar saat ini ke antrean utama
+            targets.forEach((item, index) => {
+                if (item.el.dataset.swarmBuilt !== "true" && isInViewport(item.el)) {
+                    item.el.dataset.queued = "true";
+                    observer.unobserve(item.el);
+                    buildQueue.push({ ...item, index, fromAutoPlay: false });
+                }
+            });
+
+            if (buildQueue.length > 0) {
+                processQueue();
+            }
+        }
+
+        // Tangkap klik pada link anchor (#about, #skills, #projects, tombol View Projects, dll.)
+        document.addEventListener("click", (e) => {
+            const anchor = e.target.closest('a[href^="#"]');
+            if (!anchor || isSkipped) return;
+
+            const targetId = anchor.getAttribute("href");
+            if (!targetId || targetId === "#") return;
+
+            const targetSection = document.querySelector(targetId);
+            if (!targetSection) return;
+
+            // Jika Auto Play sedang menyala, matikan dulu agar fokus ke bagian yang diklik user
+            if (isAutoPlay) {
+                isAutoPlay = false;
+                autoBtn.textContent = "Auto Play ▶";
+                autoBtn.classList.remove("is-playing");
+            }
+
+            // Tahan observer sementara selama proses smooth-scroll melewati section lain
+            isJumpingSection = true;
+
+            // Bersihkan antrean section yang sedang dilewati
+            while (buildQueue.length > 0) {
+                const oldItem = buildQueue.pop();
+                if (oldItem.el.dataset.swarmBuilt !== "true") {
+                    oldItem.el.dataset.queued = "false";
+                    observer.observe(oldItem.el);
+                }
+            }
+
+            // Segera bangun elemen di section tujuan setelah scroll mencapai target
+            setTimeout(() => {
+                isJumpingSection = false;
+                prioritizeVisibleElements();
+            }, 550);
+        });
+
+        // Juga deteksi saat user selesai scroll manual cepat ke bagian mana pun
+        let scrollEndTimer = null;
+        window.addEventListener("scroll", () => {
+            if (isSkipped || isAutoPlay || isJumpingSection) return;
+            clearTimeout(scrollEndTimer);
+            scrollEndTimer = setTimeout(() => {
+                prioritizeVisibleElements();
+            }, 150);
+        }, { passive: true });
+
         targets.forEach(({ el }) => observer.observe(el));
 
+        // Aksi Toggle Tombol Auto Play / Stop
         autoBtn.addEventListener("click", () => {
             if (isSkipped) return;
 
@@ -650,10 +747,10 @@
                 autoBtn.textContent = "Stop Auto ⏹";
                 autoBtn.classList.add("is-playing");
 
-                targets.forEach((item) => {
+                targets.forEach((item, index) => {
                     if (item.el.dataset.queued !== "true" && item.el.dataset.swarmBuilt !== "true") {
                         item.el.dataset.queued = "true";
-                        buildQueue.push({ ...item, fromAutoPlay: true });
+                        buildQueue.push({ ...item, index, fromAutoPlay: true });
                     }
                 });
 
@@ -680,6 +777,7 @@
             }
         });
 
+        // Aksi Tombol Skip Build
         skipBtn.addEventListener("click", () => {
             isSkipped = true;
             isAutoPlay = false;
