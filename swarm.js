@@ -3,6 +3,15 @@
 // ========================================
 
 (function () {
+    // Paksa halaman kembali ke paling atas saat di-refresh
+    if ("scrollRestoration" in history) {
+        history.scrollRestoration = "manual";
+    }
+    window.scrollTo(0, 0);
+    window.addEventListener("beforeunload", () => {
+        window.scrollTo(0, 0);
+    });
+    
     // 1. Suntikkan CSS khusus Swarm
     const swarmStyles = document.createElement("style");
     swarmStyles.textContent = `
