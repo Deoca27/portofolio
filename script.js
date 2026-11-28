@@ -672,7 +672,7 @@ const certificates = [
 
 
     {
-        title: "Teknokrat Academic Expo 2024 - Machine Learning Competition",
+        title: "Teknokrat Academic Expo 2025 - Machine Learning Competition",
 
         issuer: "Universitas Teknokrat Indonesia",
 
@@ -724,7 +724,7 @@ const certificates = [
 
 
     {
-        title: "Competency Based Toubleshooting & Jaringan Komputer",
+        title: "Competency Based Troubleshooting & Jaringan Komputer",
 
         issuer: "Universitas Teknokrat Indonesia",
 
@@ -776,7 +776,7 @@ const certificates = [
 
 
     {
-        title: "Kompeetensi Keahlian Multimedia Animasi 2D dan 3D",
+        title: "Kompetensi Keahlian Multimedia Animasi 2D dan 3D",
 
         issuer: "Universitas Teknokrat Indonesia",
 
