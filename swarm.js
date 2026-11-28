@@ -1,5 +1,5 @@
 // ========================================
-// SWARM REBUILD ANIMATION (VIEWPORT PRIORITY + CONTAINER FIRST + I-BEAM CURSOR)
+// SWARM REBUILD ANIMATION (PARALLEL 3 CURSORS + VIEWPORT PRIORITY)
 // ========================================
 
 (function () {
@@ -171,9 +171,8 @@
     const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
     let isSkipped = false;
     let isAutoPlay = false;
-    let isProcessing = false;
+    let activeWorkers = 0;
     let isJumpingSection = false;
-    let cursorTurn = 0;
     let remainingCount = 0;
     const buildQueue = [];
 
@@ -232,11 +231,13 @@
         }
     }
 
-    function hideCursors() {
-        cursors.forEach((c) => {
-            c.style.opacity = "0";
-            c.classList.remove("clicking", "is-typing");
-        });
+    function hideCursor(cursor) {
+        cursor.style.opacity = "0";
+        cursor.classList.remove("clicking", "is-typing");
+    }
+
+    function hideAllCursors() {
+        cursors.forEach(hideCursor);
     }
 
     // Helper: Cek apakah elemen sedang tampil di layar saat ini
@@ -535,7 +536,7 @@
         return targets;
     }
 
-    // 7. Inisialisasi Scroll Observer, Viewport Priority & Tombol Kontrol
+    // 7. Inisialisasi Scroll Observer, Viewport Priority & Parallel Workers
     function initPortfolioSwarm() {
         const targets = collectTargets();
         remainingCount = targets.length;
@@ -577,7 +578,7 @@
                 });
 
                 if (buildQueue.length > 0) {
-                    processQueue();
+                    processQueueParallel();
                 }
             },
             {
@@ -586,14 +587,16 @@
             }
         );
 
-        // Pemroses Antrean dengan Prioritas Elemen yang Tampil di Layar
-        async function processQueue() {
-            if (isProcessing || isSkipped) return;
-            isProcessing = true;
+        // Worker untuk tiap kursor agar bekerja secara paralel
+        async function runCursorWorker(cursor, workerIndex) {
+            // Stagger kecil agar ketiga kursor tidak mulai di posisi yang sama persis
+            if (workerIndex > 0) {
+                await sleep(workerIndex * 120);
+            }
 
             while (buildQueue.length > 0 && !isSkipped) {
                 if (!isAutoPlay) {
-                    // Urutkan ulang antrean: yang sedang tampil di layar selalu didahulukan
+                    // Urutkan ulang antrean: yang tampil di layar selalu didahulukan
                     buildQueue.sort((a, b) => {
                         const aVis = isInViewport(a.el) ? 0 : 1;
                         const bVis = isInViewport(b.el) ? 0 : 1;
@@ -601,11 +604,10 @@
                         return a.index - b.index;
                     });
 
-                    // Jika elemen terdepan ternyata sudah keluar layar (karena user scroll/klik menu lain),
-                    // kembalikan ke observer agar tidak menghalangi elemen yang sedang dilihat user
+                    // Kembalikan ke observer jika elemen terdepan sudah keluar dari layar
                     if (!isInViewport(buildQueue[0].el)) {
                         const skippedItem = buildQueue.shift();
-                        if (skippedItem.el.dataset.swarmBuilt !== "true") {
+                        if (skippedItem && skippedItem.el.dataset.swarmBuilt !== "true") {
                             skippedItem.el.dataset.queued = "false";
                             observer.observe(skippedItem.el);
                         }
@@ -614,18 +616,24 @@
                 }
 
                 const item = buildQueue.shift();
+                if (!item) break;
+
                 const { el, type } = item;
 
                 if (el.dataset.swarmBuilt === "true") continue;
                 el.dataset.swarmBuilt = "true";
 
-                if (isAutoPlay) {
+                // Hanya worker 0 yang mengendalikan auto-scroll agar tidak rebutan scroll
+                if (isAutoPlay && workerIndex === 0) {
                     const rect = el.getBoundingClientRect();
                     const isOutOfView = rect.top < 90 || rect.bottom > window.innerHeight - 50;
                     if (isOutOfView) {
                         el.scrollIntoView({ behavior: "smooth", block: "center" });
                         await sleep(320);
                     }
+                } else if (isAutoPlay && workerIndex > 0) {
+                    // Tunggu sebentar jika auto-play baru menggulir layar
+                    await sleep(100);
                 }
 
                 if (isSkipped) break;
@@ -635,9 +643,6 @@
                     observer.observe(el);
                     continue;
                 }
-
-                const cursor = cursors[cursorTurn % cursors.length];
-                cursorTurn++;
 
                 if (type === "text") {
                     await buildText(el, cursor);
@@ -650,10 +655,25 @@
                 remainingCount--;
             }
 
-            isProcessing = false;
+            // Sembunyikan kursor ini begitu pekerjaannya habis
+            if (!isSkipped) {
+                hideCursor(cursor);
+            }
+        }
+
+        // Jalankan ketiga kursor secara bersamaan
+        async function processQueueParallel() {
+            if (activeWorkers > 0 || isSkipped) return;
+            activeWorkers = cursors.length;
+
+            await Promise.all(
+                cursors.map((cursor, index) => runCursorWorker(cursor, index))
+            );
+
+            activeWorkers = 0;
 
             if (!isSkipped) {
-                hideCursors();
+                hideAllCursors();
                 if (remainingCount <= 0 && controlsBox.parentNode) {
                     controlsBox.remove();
                 }
@@ -664,7 +684,6 @@
         function prioritizeVisibleElements() {
             if (isSkipped || isAutoPlay) return;
 
-            // Kosongkan antrean lama yang belum sempat dibangun
             while (buildQueue.length > 0) {
                 const oldItem = buildQueue.pop();
                 if (oldItem.el.dataset.swarmBuilt !== "true") {
@@ -673,7 +692,6 @@
                 }
             }
 
-            // Masukkan semua elemen yang sedang tampil di layar saat ini ke antrean utama
             targets.forEach((item, index) => {
                 if (item.el.dataset.swarmBuilt !== "true" && isInViewport(item.el)) {
                     item.el.dataset.queued = "true";
@@ -683,7 +701,7 @@
             });
 
             if (buildQueue.length > 0) {
-                processQueue();
+                processQueueParallel();
             }
         }
 
@@ -698,17 +716,14 @@
             const targetSection = document.querySelector(targetId);
             if (!targetSection) return;
 
-            // Jika Auto Play sedang menyala, matikan dulu agar fokus ke bagian yang diklik user
             if (isAutoPlay) {
                 isAutoPlay = false;
                 autoBtn.textContent = "Auto Play ▶";
                 autoBtn.classList.remove("is-playing");
             }
 
-            // Tahan observer sementara selama proses smooth-scroll melewati section lain
             isJumpingSection = true;
 
-            // Bersihkan antrean section yang sedang dilewati
             while (buildQueue.length > 0) {
                 const oldItem = buildQueue.pop();
                 if (oldItem.el.dataset.swarmBuilt !== "true") {
@@ -717,14 +732,13 @@
                 }
             }
 
-            // Segera bangun elemen di section tujuan setelah scroll mencapai target
             setTimeout(() => {
                 isJumpingSection = false;
                 prioritizeVisibleElements();
             }, 550);
         });
 
-        // Juga deteksi saat user selesai scroll manual cepat ke bagian mana pun
+        // Deteksi saat user selesai scroll manual cepat ke bagian mana pun
         let scrollEndTimer = null;
         window.addEventListener("scroll", () => {
             if (isSkipped || isAutoPlay || isJumpingSection) return;
@@ -754,7 +768,7 @@
                     }
                 });
 
-                processQueue();
+                processQueueParallel();
             } else {
                 isAutoPlay = false;
 
@@ -784,7 +798,7 @@
             observer.disconnect();
             buildQueue.length = 0;
             targets.forEach(({ el }) => restoreElement(el));
-            hideCursors();
+            hideAllCursors();
             if (controlsBox.parentNode) controlsBox.remove();
         });
     }
