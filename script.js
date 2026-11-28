@@ -152,6 +152,18 @@ createSkills();
 const experiences = [
 
     {
+        title: "Full Stack Developer",
+
+        company:
+            "PT Enigma Cipta Humanika",
+
+        year: "November, 2026 - Present",
+
+        description:
+            "- Participated in the MagangHub internship program"
+    },
+
+    {
         title: "Internship",
 
         company:
