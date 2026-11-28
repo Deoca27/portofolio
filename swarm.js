@@ -587,14 +587,21 @@
             }
         );
 
-        // Worker untuk tiap kursor agar bekerja secara paralel
+// Worker untuk tiap kursor agar bekerja secara paralel
         async function runCursorWorker(cursor, workerIndex) {
-            // Stagger kecil agar ketiga kursor tidak mulai di posisi yang sama persis
-            if (workerIndex > 0) {
-                await sleep(workerIndex * 120);
-            }
+            while (!isSkipped) {
+                // Jika antrean kosong sementara:
+                // tunggu sebentar jika worker lain masih jalan agar bisa menangkap item susulan dari scroll
+                if (buildQueue.length === 0) {
+                    if (activeWorkers > 1) {
+                        hideCursor(cursor);
+                        await sleep(60);
+                        if (buildQueue.length === 0) break;
+                        continue;
+                    }
+                    break;
+                }
 
-            while (buildQueue.length > 0 && !isSkipped) {
                 if (!isAutoPlay) {
                     // Urutkan ulang antrean: yang tampil di layar selalu didahulukan
                     buildQueue.sort((a, b) => {
@@ -616,7 +623,7 @@
                 }
 
                 const item = buildQueue.shift();
-                if (!item) break;
+                if (!item) continue;
 
                 const { el, type } = item;
 
@@ -632,8 +639,7 @@
                         await sleep(320);
                     }
                 } else if (isAutoPlay && workerIndex > 0) {
-                    // Tunggu sebentar jika auto-play baru menggulir layar
-                    await sleep(100);
+                    await sleep(80);
                 }
 
                 if (isSkipped) break;
@@ -655,31 +661,37 @@
                 remainingCount--;
             }
 
-            // Sembunyikan kursor ini begitu pekerjaannya habis
             if (!isSkipped) {
                 hideCursor(cursor);
             }
         }
 
-        // Jalankan ketiga kursor secara bersamaan
-        async function processQueueParallel() {
-            if (activeWorkers > 0 || isSkipped) return;
-            activeWorkers = cursors.length;
+        // Jalankan ketiga kursor secara bersamaan (dan bangunkan lagi jika ada yang sempat berhenti)
+        const workerStates = cursors.map(() => false);
 
-            await Promise.all(
-                cursors.map((cursor, index) => runCursorWorker(cursor, index))
-            );
+        function processQueueParallel() {
+            if (isSkipped) return;
 
-            activeWorkers = 0;
+            cursors.forEach((cursor, index) => {
+                if (workerStates[index]) return; // Worker ini sudah aktif
+                if (buildQueue.length === 0) return;
 
-            if (!isSkipped) {
-                hideAllCursors();
-                if (remainingCount <= 0 && controlsBox.parentNode) {
-                    controlsBox.remove();
-                }
-            }
+                workerStates[index] = true;
+                activeWorkers++;
+
+                runCursorWorker(cursor, index).finally(() => {
+                    workerStates[index] = false;
+                    activeWorkers--;
+
+                    if (!isSkipped && activeWorkers === 0) {
+                        hideAllCursors();
+                        if (remainingCount <= 0 && controlsBox.parentNode) {
+                            controlsBox.remove();
+                        }
+                    }
+                });
+            });
         }
-
         // Prioritaskan elemen yang tampil di layar saat menu navigasi / tombol anchor diklik
         function prioritizeVisibleElements() {
             if (isSkipped || isAutoPlay) return;
